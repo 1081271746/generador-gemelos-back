@@ -3,6 +3,7 @@ from fastapi import FastAPI
 from app.routers.auth import router as auth_router
 from app.routers.scenarios import router as scenarios_router
 from app.routers.negotiations import router as negotiations_router
+from app.routers.messages import router as messages_router
 
 
 app = FastAPI(
@@ -14,6 +15,7 @@ app = FastAPI(
 app.include_router(auth_router)
 app.include_router(scenarios_router)
 app.include_router(negotiations_router)
+app.include_router(messages_router)
 
 
 @app.get("/")
