@@ -6,6 +6,7 @@ from sqlalchemy.orm import sessionmaker
 
 from app.models.user import User
 from app.models.scenario import Scenario
+from app.models.negotiation import Negotiation
 
 
 load_dotenv()

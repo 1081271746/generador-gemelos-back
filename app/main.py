@@ -1,6 +1,9 @@
 from fastapi import FastAPI
+
 from app.routers.auth import router as auth_router
 from app.routers.scenarios import router as scenarios_router
+from app.routers.negotiations import router as negotiations_router
+
 
 app = FastAPI(
     title="Negotiation Twin Generator API",
@@ -10,6 +13,8 @@ app = FastAPI(
 
 app.include_router(auth_router)
 app.include_router(scenarios_router)
+app.include_router(negotiations_router)
+
 
 @app.get("/")
 def root():
