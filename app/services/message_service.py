@@ -19,6 +19,22 @@ def create_message(
         .first()
     )
 
+    if negotiation is None:
+        raise ValueError("Negotiation not found.")
+
+    message = Message(
+        negotiation_id=negotiation.id,
+        sender_type="user",
+        content=message_data.content,
+    )
+
+    db.add(message)
+    db.commit()
+    db.refresh(message)
+
+    return message
+
+
 def create_twin_message(
     db: Session,
     negotiation_id: int,
@@ -46,22 +62,8 @@ def create_twin_message(
     db.commit()
     db.refresh(message)
 
-    return message    
-
-    if negotiation is None:
-        raise ValueError("Negotiation not found.")
-
-    message = Message(
-    negotiation_id=negotiation.id,
-    sender_type="user",
-    content=message_data.content,
-)
-
-    db.add(message)
-    db.commit()
-    db.refresh(message)
-
     return message
+
 
 def get_negotiation_messages(
     db: Session,

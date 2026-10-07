@@ -5,10 +5,8 @@ from app.core.dependencies import get_current_user
 from app.database.database import get_db
 from app.models.user import User
 from app.schemas.message import MessageCreate, MessageResponse
-from app.services.message_service import (
-    create_message,
-    get_negotiation_messages,
-)
+from app.services.conversation_service import process_user_message
+from app.services.message_service import get_negotiation_messages
 
 
 router = APIRouter(
@@ -19,7 +17,7 @@ router = APIRouter(
 
 @router.post(
     "/",
-    response_model=MessageResponse,
+    response_model=list[MessageResponse],
     status_code=status.HTTP_201_CREATED,
 )
 def create_new_message(
@@ -28,11 +26,17 @@ def create_new_message(
     db: Session = Depends(get_db),
 ):
     try:
-        return create_message(
+        user_message, twin_message = process_user_message(
             db,
             current_user.id,
             message_data,
         )
+
+        return [
+            user_message,
+            twin_message,
+        ]
+
     except ValueError as error:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
