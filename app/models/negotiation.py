@@ -20,6 +20,7 @@ class Negotiation(Base):
         index=True,
     )
 
+
     scenario_id: Mapped[int] = mapped_column(
         ForeignKey("scenarios.id"),
         nullable=False,

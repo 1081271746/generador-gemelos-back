@@ -8,6 +8,7 @@ from app.database.database import get_db
 from app.models.user import User
 
 
+
 security = HTTPBearer()
 
 
@@ -46,3 +47,4 @@ def get_current_user(
         raise credentials_exception
 
     return user
+    
