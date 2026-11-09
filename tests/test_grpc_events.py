@@ -162,3 +162,47 @@ async def test_two_real_fastapi_instances_share_grpc_redis_events(db, owner, sce
                 assert resumed.receive_json()["sequence"] == cursor
 
     await asyncio.wait_for(asyncio.to_thread(run_clients), timeout=15)
+
+
+async def test_replay_after_event_server_restart_and_negotiation_isolation(db, owner, scenario, session_factory, redis_url):
+    first = create_negotiation(db, owner.id, NegotiationCreate(scenario_id=scenario.id))
+    second = create_negotiation(db, owner.id, NegotiationCreate(scenario_id=scenario.id))
+    own_event = record_event(db, owner.id, first.id, "message.created")
+    other_event = record_event(db, owner.id, second.id, "message.created")
+    db.commit()
+    seen = []
+    for _ in range(2):
+        redis = Redis.from_url(redis_url, decode_responses=True)
+        server = grpc.aio.server()
+        rpc.add_NegotiationEventServiceServicer_to_server(EventServicer(session_factory, redis), server)
+        port = server.add_insecure_port("127.0.0.1:0")
+        await server.start()
+        try:
+            async with grpc.aio.insecure_channel(f"127.0.0.1:{port}") as channel:
+                stream = rpc.NegotiationEventServiceStub(channel).SubscribeEvents(
+                    pb.Subscription(negotiation_id=first.id), metadata=access_metadata(owner))
+                try:
+                    initial = await asyncio.wait_for(stream.read(), 3)
+                    message = await asyncio.wait_for(stream.read(), 3)
+                    assert initial.negotiation_id == message.negotiation_id == first.id
+                    assert message.event_id == own_event.event_id
+                    assert message.event_id != other_event.event_id
+                    seen.append(message.event_id)
+                finally:
+                    stream.cancel()
+        finally:
+            await server.stop(0)
+            await redis.aclose()
+    assert seen[0] == seen[1]
+
+
+async def test_revoked_token_cannot_start_subscription(db, owner, scenario, event_endpoint):
+    create_negotiation(db, owner.id, NegotiationCreate(scenario_id=scenario.id))
+    metadata = access_metadata(owner)
+    owner.token_version += 1
+    db.commit()
+    async with grpc.aio.insecure_channel(event_endpoint) as channel:
+        stream = rpc.NegotiationEventServiceStub(channel).SubscribeEvents(pb.Subscription(), metadata=metadata)
+        with pytest.raises(grpc.aio.AioRpcError) as error:
+            await stream.read()
+        assert error.value.code() == grpc.StatusCode.UNAUTHENTICATED

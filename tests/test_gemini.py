@@ -39,3 +39,16 @@ async def test_missing_key_does_not_produce_fake_reply():
     with pytest.raises(ExternalServiceError, match="not configured"):
         await service.generate("test", {}, TwinResponse)
     await service.close()
+
+
+async def test_timeout_does_not_expose_provider_error_or_credentials():
+    def timeout(request):
+        raise httpx.ReadTimeout("provider details must not escape")
+    redis = AsyncMock()
+    redis.eval.return_value = 1
+    service = GeminiService(Settings(GEMINI_API_KEY="test-only-placeholder"),
+        httpx.AsyncClient(transport=httpx.MockTransport(timeout)), redis)
+    with pytest.raises(ExternalServiceError) as error:
+        await service.generate("test", {}, TwinResponse)
+    assert "provider details" not in str(error.value)
+    await service.close()
