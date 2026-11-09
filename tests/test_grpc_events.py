@@ -116,3 +116,49 @@ async def test_stream_isolation_and_invalid_publications(db, owner, scenario, ev
             await stub.PublishEvent(pb.PublishRequest(event_id=event.event_id), metadata=publish_metadata(other), timeout=2)
         assert error.value.code() == grpc.StatusCode.PERMISSION_DENIED
         assert stub is not None
+
+
+async def test_two_real_fastapi_instances_share_grpc_redis_events(db, owner, scenario, session_factory, event_endpoint, monkeypatch):
+    from fastapi.testclient import TestClient
+    from app.core.config import settings
+    from app.database.database import get_db
+    from app.main import create_app
+
+    monkeypatch.setattr(settings, "EVENT_GRPC_TARGET", event_endpoint)
+    token = create_access_token({"sub": str(owner.id), "ver": owner.token_version})
+    scenario_id = scenario.id
+    db.rollback()
+
+    def session_dependency():
+        with session_factory() as session:
+            yield session
+
+    def run_clients():
+        app_a = create_app(session_factory)
+        app_b = create_app(session_factory)
+        app_a.dependency_overrides[get_db] = session_dependency
+        app_b.dependency_overrides[get_db] = session_dependency
+        headers = {"Authorization": f"Bearer {token}"}
+        with TestClient(app_a) as backend_a, TestClient(app_b) as backend_b:
+            response = backend_a.post("/negotiations/", headers=headers, json={"scenario_id": scenario_id})
+            assert response.status_code == 201
+            negotiation_id = response.json()["id"]
+            with backend_a.websocket_connect("/ws/events") as socket_a, backend_b.websocket_connect("/ws/events") as socket_b:
+                frame = {"token": token, "negotiation_id": negotiation_id, "after_sequence": 0}
+                socket_a.send_json(frame)
+                socket_b.send_json(frame)
+                first_a, first_b = socket_a.receive_json(), socket_b.receive_json()
+                assert first_a["event_id"] == first_b["event_id"]
+                assert first_a["event_type"] == "negotiation.started"
+                result = backend_a.patch(f"/negotiations/{negotiation_id}", headers=headers,
+                    json={"status": "cancelled", "result": "User ended practice"})
+                assert result.status_code == 200
+                next_a, next_b = socket_a.receive_json(), socket_b.receive_json()
+                assert next_a["event_id"] == next_b["event_id"]
+                assert next_b["event_type"] == "negotiation.cancelled"
+                cursor = next_b["sequence"]
+            with backend_b.websocket_connect("/ws/events") as resumed:
+                resumed.send_json({"token": token, "after_sequence": first_b["sequence"]})
+                assert resumed.receive_json()["sequence"] == cursor
+
+    await asyncio.wait_for(asyncio.to_thread(run_clients), timeout=15)
