@@ -1,50 +1,31 @@
-from fastapi import Depends, HTTPException, status
+import jwt
+from fastapi import Depends, HTTPException
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
-from jose import JWTError, jwt
 from sqlalchemy.orm import Session
 
-from app.core.config import settings
+from app.core.security import decode_access_token
 from app.database.database import get_db
 from app.models.user import User
 
 
+security = HTTPBearer(auto_error=False)
 
-security = HTTPBearer()
+
+def user_from_token(token: str, db: Session) -> User:
+    try:
+        payload = decode_access_token(token)
+        user = db.get(User, int(payload["sub"]))
+        if not user or not user.is_active or payload["type"] != "access" or payload["ver"] != user.token_version:
+            raise jwt.InvalidTokenError()
+        return user
+    except (jwt.InvalidTokenError, ValueError, TypeError, KeyError):
+        raise HTTPException(401, "Invalid or expired credentials", headers={"WWW-Authenticate": "Bearer"})
 
 
 def get_current_user(
-    credentials: HTTPAuthorizationCredentials = Depends(security),
+    credentials: HTTPAuthorizationCredentials | None = Depends(security),
     db: Session = Depends(get_db),
 ) -> User:
-    credentials_exception = HTTPException(
-        status_code=status.HTTP_401_UNAUTHORIZED,
-        detail="Could not validate credentials",
-        headers={"WWW-Authenticate": "Bearer"},
-    )
-
-    token = credentials.credentials
-
-    try:
-        payload = jwt.decode(
-            token,
-            settings.SECRET_KEY,
-            algorithms=[settings.ALGORITHM],
-        )
-
-        user_id = payload.get("sub")
-
-        if user_id is None:
-            raise credentials_exception
-
-        user_id = int(user_id)
-
-    except (JWTError, ValueError):
-        raise credentials_exception
-
-    user = db.query(User).filter(User.id == user_id).first()
-
-    if user is None or not user.is_active:
-        raise credentials_exception
-
-    return user
-    
+    if credentials is None:
+        raise HTTPException(401, "Authentication required", headers={"WWW-Authenticate": "Bearer"})
+    return user_from_token(credentials.credentials, db)
