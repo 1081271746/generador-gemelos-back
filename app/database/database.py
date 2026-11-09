@@ -1,32 +1,26 @@
-import os
+from collections.abc import Generator
 
-from dotenv import load_dotenv
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy import create_engine, event
+from sqlalchemy.orm import Session, sessionmaker
 
-from app.models.user import User
-from app.models.scenario import Scenario
-from app.models.negotiation import Negotiation
-from app.models.message import Message
+from app.core.config import settings
 
 
-load_dotenv()
-
-DATABASE_URL = os.getenv("DATABASE_URL")
-
-engine = create_engine(DATABASE_URL)
-
-SessionLocal = sessionmaker(
-    autocommit=False,
-    autoflush=False,
-    bind=engine,
-)
+def make_engine(url: str):
+    options = {"check_same_thread": False, "timeout": 20} if url.startswith("sqlite") else {}
+    database_engine = create_engine(url, connect_args=options, pool_pre_ping=True)
+    if url.startswith("sqlite"):
+        @event.listens_for(database_engine, "connect")
+        def configure_sqlite(connection, record):
+            connection.execute("PRAGMA foreign_keys=ON")
+            connection.execute("PRAGMA journal_mode=WAL")
+    return database_engine
 
 
-def get_db():
-    db = SessionLocal()
+engine = make_engine(settings.DATABASE_URL)
+SessionLocal = sessionmaker(bind=engine, expire_on_commit=False)
 
-    try:
-        yield db
-    finally:
-        db.close()
+
+def get_db() -> Generator[Session, None, None]:
+    with SessionLocal() as session:
+        yield session

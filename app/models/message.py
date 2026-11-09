@@ -1,13 +1,16 @@
 from datetime import datetime
 
-from sqlalchemy import DateTime, ForeignKey, String, Text
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy import DateTime, ForeignKey, String, Text, UniqueConstraint
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database.base import Base
+from app.utils.time import utc_now
 
 
 class Message(Base):
     __tablename__ = "messages"
+    __table_args__ = (UniqueConstraint("negotiation_id", "request_id", "sender_type"),)
+    negotiation: Mapped["Negotiation"] = relationship(back_populates="messages")
 
     id: Mapped[int] = mapped_column(
         primary_key=True,
@@ -29,9 +32,11 @@ class Message(Base):
         Text,
         nullable=False,
     )
+    kind: Mapped[str] = mapped_column(String(30), default="argument", server_default="argument")
+    request_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
 
     created_at: Mapped[datetime] = mapped_column(
         DateTime,
-        default=datetime.utcnow,
+        default=utc_now,
         nullable=False,
     )

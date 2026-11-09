@@ -1,0 +1,58 @@
+syntax = "proto3";
+package negotiation;
+
+message ConversationMessage {
+  int64 message_id = 1;
+  string sender_type = 2;
+  string content = 3;
+  string kind = 4;
+}
+
+message NegotiationContext {
+  int64 user_id = 1;
+  int64 negotiation_id = 2;
+  string scenario_json = 3;
+  repeated ConversationMessage messages = 4;
+  string profile_json = 5;
+  string result = 6;
+}
+
+message JsonResult {
+  string json = 1;
+}
+
+message PublishRequest {
+  string event_id = 1;
+}
+
+message PublishResult {
+  bool accepted = 1;
+}
+
+message Subscription {
+  int64 negotiation_id = 1;
+  int64 after_sequence = 2;
+}
+
+message NegotiationEvent {
+  string event_id = 1;
+  int64 sequence = 2;
+  int64 user_id = 3;
+  int64 negotiation_id = 4;
+  string event_type = 5;
+  string payload_json = 6;
+  string created_at = 7;
+}
+
+service TwinNegotiationService {
+  rpc GenerateReply(NegotiationContext) returns (JsonResult);
+}
+
+service NegotiationAnalysisService {
+  rpc AnalyzeNegotiation(NegotiationContext) returns (JsonResult);
+}
+
+service NegotiationEventService {
+  rpc PublishEvent(PublishRequest) returns (PublishResult);
+  rpc SubscribeEvents(Subscription) returns (stream NegotiationEvent);
+}

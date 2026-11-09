@@ -1,63 +1,21 @@
+import json
+
 from sqlalchemy.orm import Session
 
-from app.models.message import Message
-from app.models.negotiation import Negotiation
-from app.models.scenario import Scenario
+from app.models import NegotiatorProfile
+from app.repositories.negotiation_repository import NegotiationRepository
+from app.rpc import negotiation_pb2 as pb
 
 
-def build_twin_context(
-    db: Session,
-    user_id: int,
-    negotiation_id: int,
-) -> dict:
-    negotiation = (
-        db.query(Negotiation)
-        .filter(
-            Negotiation.id == negotiation_id,
-            Negotiation.user_id == user_id,
-        )
-        .first()
+def build_twin_context(db: Session, user_id: int, negotiation_id: int) -> pb.NegotiationContext:
+    repository = NegotiationRepository(db, user_id)
+    negotiation = repository.negotiation(negotiation_id)
+    profile = db.get(NegotiatorProfile, user_id)
+    return pb.NegotiationContext(
+        user_id=user_id, negotiation_id=negotiation.id,
+        scenario_json=json.dumps(negotiation.scenario_snapshot),
+        profile_json=json.dumps(profile.payload if profile else {}),
+        result=negotiation.result or "",
+        messages=[pb.ConversationMessage(message_id=message.id, sender_type=message.sender_type,
+            content=message.content, kind=message.kind) for message in repository.messages(negotiation_id)],
     )
-
-    if negotiation is None:
-        raise ValueError("Negotiation not found.")
-
-    scenario = (
-        db.query(Scenario)
-        .filter(Scenario.id == negotiation.scenario_id)
-        .first()
-    )
-
-    if scenario is None:
-        raise ValueError("Scenario not found.")
-
-    messages = (
-        db.query(Message)
-        .filter(Message.negotiation_id == negotiation.id)
-        .order_by(Message.created_at.asc())
-        .all()
-    )
-
-    return {
-        "negotiation": {
-            "id": negotiation.id,
-            "status": negotiation.status,
-        },
-        "scenario": {
-            "title": scenario.title,
-            "description": scenario.description,
-            "context": scenario.context,
-            "objective": scenario.objective,
-            "counterpart_role": scenario.counterpart_role,
-            "counterpart_goal": scenario.counterpart_goal,
-            "counterpart_limits": scenario.counterpart_limits,
-        },
-        "messages": [
-            {
-                "sender_type": message.sender_type,
-                "content": message.content,
-                "created_at": message.created_at,
-            }
-            for message in messages
-        ],
-    }
