@@ -206,3 +206,18 @@ async def test_revoked_token_cannot_start_subscription(db, owner, scenario, even
         with pytest.raises(grpc.aio.AioRpcError) as error:
             await stream.read()
         assert error.value.code() == grpc.StatusCode.UNAUTHENTICATED
+
+
+async def test_ai_quota_is_shared_across_independent_clients(redis_url):
+    from app.ai.gemini import GeminiService
+    from app.core.config import Settings
+    from app.core.errors import ExternalServiceError
+    configuration = Settings(REDIS_URL=redis_url, GEMINI_REQUESTS_PER_MINUTE=1)
+    first, second = GeminiService(configuration), GeminiService(configuration)
+    try:
+        await first.reserve_quota()
+        with pytest.raises(ExternalServiceError, match="rate limit"):
+            await second.reserve_quota()
+    finally:
+        await first.close()
+        await second.close()
