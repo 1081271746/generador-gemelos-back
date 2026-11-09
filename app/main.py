@@ -13,7 +13,7 @@ from app.core.errors import DomainError
 from app.database.base import Base
 from app.database.database import SessionLocal
 from app.rpc.client import ServiceClients
-from app.routers import auth, scenarios, negotiations, messages, analyses, events
+from app.routers import auth, scenarios, negotiations, messages, analyses, events, resources
 from app.services.outbox_service import run_dispatcher
 from app.websocket.events import router as websocket_router
 
@@ -50,7 +50,7 @@ def create_app(session_factory=SessionLocal, client_factory=ServiceClients, star
     application.state.cors_origins = settings.CORS_ORIGINS
     application.add_middleware(CORSMiddleware, allow_origins=settings.CORS_ORIGINS,
         allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE"], allow_headers=["Authorization", "Content-Type"])
-    for router in (auth.router, scenarios.router, negotiations.router, messages.router, analyses.router, events.router, websocket_router):
+    for router in (auth.router, scenarios.router, negotiations.router, messages.router, analyses.router, events.router, resources.router, websocket_router):
         application.include_router(router)
 
     @application.exception_handler(DomainError)
