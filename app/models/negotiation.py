@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from sqlalchemy import DateTime, ForeignKey, String
+from sqlalchemy import DateTime, ForeignKey, String, JSON, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.database.base import Base
@@ -32,6 +32,11 @@ class Negotiation(Base):
         default="active",
         nullable=False,
     )
+
+    scenario_snapshot: Mapped[dict] = mapped_column(JSON, default=dict)
+    result: Mapped[str | None] = mapped_column(Text, nullable=True)
+    processing_token: Mapped[str | None] = mapped_column(String(36), nullable=True)
+    processing_until: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 
     started_at: Mapped[datetime] = mapped_column(
         DateTime,
