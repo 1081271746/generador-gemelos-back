@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session
 
 from app.models import Analysis, NegotiatorProfile
 from app.schemas.analysis import DIMENSION_NAMES
+from app.utils.time import utc_now
 
 
 def rebuild_profile(db: Session, user_id: int) -> NegotiatorProfile:
@@ -30,7 +31,7 @@ def rebuild_profile(db: Session, user_id: int) -> NegotiatorProfile:
         db.add(profile)
     profile.payload = payload
     profile.sample_count = count
-    profile.updated_at = datetime.utcnow()
+    profile.updated_at = utc_now()
     db.flush()
     return profile
 

@@ -1,13 +1,18 @@
 from datetime import datetime
 
 from sqlalchemy import DateTime, ForeignKey, String, JSON, Text
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database.base import Base
+from app.utils.time import utc_now
 
 
 class Negotiation(Base):
     __tablename__ = "negotiations"
+    user: Mapped["User"] = relationship(back_populates="negotiations")
+    scenario: Mapped["Scenario"] = relationship(back_populates="negotiations")
+    messages: Mapped[list["Message"]] = relationship(back_populates="negotiation", order_by="Message.id")
+    analysis: Mapped["Analysis | None"] = relationship(back_populates="negotiation")
 
     id: Mapped[int] = mapped_column(
         primary_key=True,
@@ -40,7 +45,7 @@ class Negotiation(Base):
 
     started_at: Mapped[datetime] = mapped_column(
         DateTime,
-        default=datetime.utcnow,
+        default=utc_now,
         nullable=False,
     )
 

@@ -11,6 +11,7 @@ from app.repositories.negotiation_repository import NegotiationRepository
 from app.schemas.analysis import TwinResponse
 from app.schemas.message import MessageCreate
 from app.services.event_service import record_event
+from app.utils.time import utc_now
 
 
 def get_negotiation_messages(db: Session, user_id: int, negotiation_id: int, offset: int = 0, limit: int = 100):
@@ -31,7 +32,7 @@ def prepare_turn(db: Session, user_id: int, data: MessageCreate):
         latest = db.scalar(select(Message.id).where(Message.negotiation_id == data.negotiation_id).order_by(Message.id.desc()).limit(1))
         if latest != existing[0].id:
             raise DomainError("Cannot retry an older incomplete turn after later messages", 409)
-    now = datetime.utcnow()
+    now = utc_now()
     lease = str(uuid4())
     updated = db.execute(update(Negotiation).where(
         Negotiation.id == data.negotiation_id, Negotiation.user_id == user_id, Negotiation.status == "active",

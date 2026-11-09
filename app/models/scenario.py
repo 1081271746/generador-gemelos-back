@@ -1,13 +1,16 @@
 from datetime import datetime
 
 from sqlalchemy import Boolean, DateTime, ForeignKey, String, Text
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database.base import Base
+from app.utils.time import utc_now
 
 
 class Scenario(Base):
     __tablename__ = "scenarios"
+    user: Mapped["User"] = relationship(back_populates="scenarios")
+    negotiations: Mapped[list["Negotiation"]] = relationship(back_populates="scenario")
 
     id: Mapped[int] = mapped_column(
         primary_key=True,
@@ -63,6 +66,6 @@ class Scenario(Base):
 
     created_at: Mapped[datetime] = mapped_column(
         DateTime,
-        default=datetime.utcnow,
+        default=utc_now,
         nullable=False,
     )

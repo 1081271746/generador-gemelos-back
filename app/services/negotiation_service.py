@@ -9,6 +9,7 @@ from app.repositories.negotiation_repository import NegotiationRepository
 from app.schemas.negotiation import NegotiationCreate, NegotiationFinish
 from app.schemas.scenario import ScenarioCreate
 from app.services.event_service import record_event
+from app.utils.time import utc_now
 
 
 def create_negotiation(db: Session, user_id: int, data: NegotiationCreate) -> Negotiation:
@@ -34,7 +35,7 @@ def get_negotiation_by_id(db: Session, negotiation_id: int, user_id: int) -> Neg
 
 def finish_negotiation(db: Session, user_id: int, negotiation_id: int, data: NegotiationFinish) -> Negotiation:
     negotiation = get_negotiation_by_id(db, negotiation_id, user_id)
-    now = datetime.utcnow()
+    now = utc_now()
     result = db.execute(update(Negotiation).where(
         Negotiation.id == negotiation_id, Negotiation.user_id == user_id, Negotiation.status == "active",
         or_(Negotiation.processing_token.is_(None), Negotiation.processing_until < now),
