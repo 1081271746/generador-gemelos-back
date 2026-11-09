@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, Query, Request
 from sqlalchemy.orm import Session
 
 from app.core.dependencies import get_current_user
@@ -9,58 +9,15 @@ from app.services.conversation_service import process_user_message
 from app.services.message_service import get_negotiation_messages
 
 
-router = APIRouter(
-    prefix="/messages",
-    tags=["Messages"],
-)
+router = APIRouter(prefix="/messages", tags=["Messages"])
 
 
-@router.post(
-    "/",
-    response_model=list[MessageResponse],
-    status_code=status.HTTP_201_CREATED,
-)
-def create_new_message(
-    message_data: MessageCreate,
-    current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db),
-):
-    try:
-        user_message, twin_message = process_user_message(
-            db,
-            current_user.id,
-            message_data,
-        )
-
-        return [
-            user_message,
-            twin_message,
-        ]
-
-    except ValueError as error:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=str(error),
-        )
+@router.post("/", response_model=list[MessageResponse], status_code=201)
+async def create(data: MessageCreate, request: Request, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    return await process_user_message(db, user.id, data, request.app.state.clients)
 
 
-@router.get(
-    "/{negotiation_id}",
-    response_model=list[MessageResponse],
-)
-def get_messages(
-    negotiation_id: int,
-    current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db),
-):
-    try:
-        return get_negotiation_messages(
-            db,
-            current_user.id,
-            negotiation_id,
-        )
-    except ValueError as error:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=str(error),
-        )
+@router.get("/{negotiation_id}", response_model=list[MessageResponse])
+def list_messages(negotiation_id: int, offset: int = Query(0, ge=0), limit: int = Query(100, ge=1, le=500),
+    user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    return get_negotiation_messages(db, user.id, negotiation_id, offset, limit)
