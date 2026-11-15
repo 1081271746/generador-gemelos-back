@@ -69,6 +69,12 @@ def test_ambiguous_thousands_separator_does_not_weaken_limit():
         validate_numeric_limits("Propongo 5000", "Precio mínimo 9.000")
 
 
+def test_private_boundary_must_not_be_labeled_in_the_reply():
+    with pytest.raises(ExternalServiceError, match="private numeric boundary"):
+        validate_numeric_limits("El precio mínimo es 90", "No vender por debajo de 90")
+    validate_numeric_limits("Propongo 90 por caja.", "No vender por debajo de 90")
+
+
 async def test_analysis_exact_user_quotes_only():
     example = list(examples())[1]
     fake = AsyncMock()

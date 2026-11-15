@@ -37,10 +37,13 @@ def validate_numeric_limits(content, limits):
     bounds = numeric_bounds(limits)
     if not bounds:
         return
+    labels = re.search(r"\b(?:m[ií]nim[oa]|m[aá]xim[oa]|l[ií]mite|presupuesto|minimum|maximum)\b", content, re.I)
     for match in re.finditer(rf"(?<!\w)({NUMBER})(\s*%)?", content):
         value = amount(match[1])
         percent = bool(match[2])
         for lower, boundary, is_percent in bounds:
+            if labels and percent == is_percent and value == boundary:
+                raise ExternalServiceError("Local AI response may disclose a private numeric boundary")
             if percent == is_percent and (value < boundary if lower else value > boundary):
                 # Reject rather than rewriting a model response or fabricating a turn.
                 raise ExternalServiceError("Local AI response violates an explicit numeric limit")
