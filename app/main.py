@@ -72,7 +72,10 @@ def create_app(session_factory=SessionLocal, client_factory=ServiceClients, star
                 db.execute(text("SELECT 1"))
         except Exception:
             return JSONResponse({"database": "unavailable"}, status_code=503)
-        return {"database": "ok", "gemini_configured": bool(settings.GEMINI_API_KEY)}
+        from app.ai.model_manager import provider_name
+        return {"database": "ok", "gemini_configured": bool(settings.GEMINI_API_KEY),
+                "ai_provider": provider_name(),
+                "ai_readiness": "not_probed"}
 
     return application
 
