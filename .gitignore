@@ -1,3 +1,10 @@
+models/
+generated-artifacts/
+training/private/
+training/prepared/
+*.gguf
+*.safetensors
+*.bin
 venv/
 .env
 __pycache__/

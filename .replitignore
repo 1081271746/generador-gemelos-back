@@ -1,0 +1,5 @@
+models/
+generated-artifacts/
+training/private/
+training/prepared/
+.git/
