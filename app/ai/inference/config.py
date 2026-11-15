@@ -1,4 +1,5 @@
 import os
+from typing import Literal
 from urllib.parse import urlsplit
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
@@ -14,6 +15,7 @@ class InferenceConfig(BaseModel):
     max_response_bytes: int = Field(default=131072, ge=1024, le=1048576)
     concurrency: int = Field(default=1, ge=1, le=8)
     queue_timeout: float = Field(default=2, gt=0, le=30)
+    schema_mode: Literal["full", "structural"] = "full"
 
     @model_validator(mode="after")
     def validate_endpoint(self):
@@ -31,5 +33,6 @@ class InferenceConfig(BaseModel):
             "base_url": "AI_BASE_URL", "model": "AI_MODEL", "timeout": "AI_TIMEOUT_SECONDS",
             "max_tokens": "AI_MAX_TOKENS", "max_context_bytes": "AI_MAX_CONTEXT_BYTES",
             "concurrency": "AI_CONCURRENCY", "queue_timeout": "AI_QUEUE_TIMEOUT_SECONDS",
+            "schema_mode": "AI_SCHEMA_MODE",
         }
         return cls(**{key: os.environ[name] for key, name in mapping.items() if name in os.environ})
