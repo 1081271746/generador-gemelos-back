@@ -17,7 +17,9 @@ from training.data import load_examples
 async def evaluate(examples, endpoints, max_tokens=2048, timeout=300):
     reports = {}
     for label, endpoint in endpoints.items():
-        provider = LocalInference(InferenceConfig(base_url=endpoint, timeout=timeout, max_tokens=max_tokens))
+        measurements = []
+        provider = LocalInference(InferenceConfig(base_url=endpoint, timeout=timeout, max_tokens=max_tokens),
+                                  observer=measurements.append)
         rows = []
         try:
             for example in examples:
@@ -34,7 +36,10 @@ async def evaluate(examples, endpoints, max_tokens=2048, timeout=300):
                             for key in DIMENSION_NAMES) / len(DIMENSION_NAMES)
                 except Exception as error:
                     row = {"id": example.id, "task": example.task, "valid_schema_and_evidence": False,
-                           "error_type": type(error).__name__}
+                           "error_type": type(error).__name__,
+                           "error_code": getattr(error, "code", "domain_or_input_validation")}
+                row["inference_metrics"] = measurements[-1] if measurements else None
+                measurements.clear()
                 row["seconds"] = round(time.monotonic() - started, 3)
                 rows.append(row)
         finally:
