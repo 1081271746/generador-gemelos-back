@@ -9,6 +9,7 @@ existentes. Gemini queda disponible solo como reversión explícita.
 - [Resultados reales y límites de lo verificado](docs/local-ai-validation.md).
 - [Plan técnico de continuación y modelos candidatos](docs/implementation-plan.md).
 - [Diagnóstico medido del timeout y avances por etapa](docs/performance-diagnosis.md).
+- [Diagnóstico de la GPU local en Windows sin instalaciones](docs/windows-hardware-diagnostic.md).
 
 **Estado:** integración y pipeline implementados; inferencia del modelo base
 probada en CPU; **sin adaptador especializado entrenado**. Los 20 ejemplos
