@@ -8,6 +8,7 @@ from training.config import TrainingConfig
 from training.data import load_examples
 from training.hardware import inspect_hardware
 from training.tokenization import tokenize_example, pad_batch
+from training.provenance import software_manifest
 
 
 def train(config, resume=None):
@@ -79,8 +80,14 @@ def train(config, resume=None):
     # Actual adapter saved only after train() returns successfully.
     trainer.save_model(str(output))
     tokenizer.save_pretrained(output)
+    trainable, total = model.get_nb_trainable_parameters()
+    (output / "training-history.json").write_text(json.dumps(trainer.state.log_history, indent=2, default=str) + "\n")
     run = {"status": "smoke_completed" if config.smoke else "training_completed",
            "expert_model": False, "config": config.model_dump(), "hardware": facts,
+           "software": software_manifest(), "cuda_runtime": torch.version.cuda,
+           "trainable_parameters": trainable, "total_parameters": total,
+           "global_step": trainer.state.global_step,
+           "checkpoints": sorted(path.name for path in output.glob("checkpoint-*") if path.is_dir()),
            "dataset_manifest": manifest, "train_metrics": result.metrics, "validation_metrics": metrics}
     (output / "run.json").write_text(json.dumps(run, indent=2, default=str) + "\n")
     return run
