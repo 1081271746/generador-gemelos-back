@@ -15,10 +15,15 @@ Las pruebas de contratos no demuestran calidad semántica ni de entrenamiento.
 
 ## Modelo y licencia
 
-Seleccionado: **Qwen/Qwen2.5-1.5B-Instruct**, 1.54B parámetros, Apache-2.0.
+Baseline instalado y medido: **Qwen/Qwen2.5-1.5B-Instruct**, 1.54B parámetros, Apache-2.0.
 Su ficha declara español entre más de 29 idiomas, seguimiento de instrucciones,
 role-play y salidas JSON. No se entrenan pesos aleatorios: se especializan pesos
 preentrenados mediante LoRA/QLoRA cuando existe infraestructura y datos adecuados.
+
+Este baseline no está aprobado. El candidato posterior para evaluación en GPU
+es Qwen3-4B-Instruct-2507; ver el [plan técnico](implementation-plan.md) y el
+[diagnóstico medido](performance-diagnosis.md). No se confunde selección
+documental con un modelo ya entrenado o evaluado en este entorno.
 
 - Pesos HF: revisión `989aa7980e4cf806f80c7fef2b1adb7bc71aa306`.
 - GGUF oficial: `Qwen/Qwen2.5-1.5B-Instruct-GGUF`, revisión

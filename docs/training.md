@@ -96,6 +96,12 @@ elige uno nuevo o proporciona un checkpoint. Guarda respaldos del adaptador,
 tokenizer, manifiesto, revisión base y métricas. No hay entrenamiento automático
 con cada conversación ni acceso del pipeline a PostgreSQL.
 
+Una corrida que realmente termine también registra versiones de librerías,
+runtime CUDA, parámetros entrenables/totales, pasos, checkpoints existentes e
+historial del Trainer. Agregar estos campos al pipeline no significa que ya
+exista tal corrida. `training/qwen3-4b.candidate.json` es el perfil posterior
+de evaluación GPU; requiere corpus revisado y smoke antes de entrenar.
+
 ## Evaluación base frente a especializado
 
 El comando siguiente solo compara si **ambos modelos existen y están cargados**
