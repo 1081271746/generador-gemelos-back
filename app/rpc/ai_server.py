@@ -6,7 +6,10 @@ import signal
 import grpc
 from pydantic import ValidationError
 
-from app.ai.gemini import GeminiService
+from app.ai.inference.base import InferenceProvider
+from app.ai.model_manager import create_provider
+from app.ai.twin_engine import TwinEngine
+from app.ai.analysis_engine import AnalysisEngine
 from app.ai.prompts import TWIN_INSTRUCTIONS, ANALYSIS_INSTRUCTIONS
 from app.core.config import settings
 from app.core.errors import ExternalServiceError
@@ -31,8 +34,9 @@ def unpack_context(request: pb.NegotiationContext) -> dict:
 
 
 class AIServicer(rpc.TwinNegotiationServiceServicer, rpc.NegotiationAnalysisServiceServicer):
-    def __init__(self, gemini: GeminiService):
-        self.gemini = gemini
+    def __init__(self, provider: InferenceProvider):
+        self.twin = TwinEngine(provider)
+        self.analysis = AnalysisEngine(provider)
 
     async def generate(self, request, context, scope, instructions, schema):
         user_id = await require_service(context, scope)
@@ -40,7 +44,7 @@ class AIServicer(rpc.TwinNegotiationServiceServicer, rpc.NegotiationAnalysisServ
             await context.abort(grpc.StatusCode.PERMISSION_DENIED, "User scope mismatch")
         try:
             data = unpack_context(request)
-            result = await self.gemini.generate(instructions, data, schema)
+            result = await (self.twin.reply(data) if scope == "twin" else self.analysis.analyze(data))
             return pb.JsonResult(json=result.model_dump_json())
         except (ValueError, ValidationError, TypeError):
             await context.abort(grpc.StatusCode.INVALID_ARGUMENT, "Invalid negotiation data")
@@ -56,9 +60,9 @@ class AIServicer(rpc.TwinNegotiationServiceServicer, rpc.NegotiationAnalysisServ
 
 async def serve(kind: str):
     settings.validate_security()
-    gemini = GeminiService()
+    provider = create_provider()
     server = grpc.aio.server(options=[("grpc.max_receive_message_length", 1024 * 1024)])
-    servicer = AIServicer(gemini)
+    servicer = AIServicer(provider)
     target = settings.TWIN_GRPC_TARGET if kind == "twin" else settings.ANALYSIS_GRPC_TARGET
     if kind == "twin":
         rpc.add_TwinNegotiationServiceServicer_to_server(servicer, server)
@@ -73,7 +77,7 @@ async def serve(kind: str):
         await stopping.wait()
     finally:
         await server.stop(5)
-        await gemini.close()
+        await provider.close()
 
 
 if __name__ == "__main__":
