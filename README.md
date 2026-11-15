@@ -1,3 +1,20 @@
+# Motor de IA local (actualización)
+
+La inferencia predeterminada usa un **modelo abierto autohospedado mediante
+llama.cpp**, no Gemini. Se mantienen los servicios gRPC y todos los contratos
+existentes. Gemini queda disponible solo como reversión explícita.
+
+- [Arquitectura, modelo, licencia e inferencia local](docs/local-ai.md).
+- [Dataset, entrenamiento LoRA/QLoRA, evaluación y exportación](docs/training.md).
+- [Resultados reales y límites de lo verificado](docs/local-ai-validation.md).
+
+**Estado:** integración y pipeline implementados; inferencia del modelo base
+probada en CPU; **sin adaptador especializado entrenado**. Los 20 ejemplos
+sintéticos son demostrativos, no un corpus suficiente para una IA experta.
+Las secciones históricas sobre Gemini que siguen describen el proveedor previo.
+Para la ruta nueva siguen vigentes FastAPI, Redis, gRPC, autenticación y
+persistencia; sustituye la configuración de proveedor como indica la guía local.
+
 # Generador de Gemelos de Negociación — Backend
 
 Backend universitario desarrollado sobre los archivos originales de `1081271746/generador-gemelos-back`. No incluye frontend. La API conserva los prefijos `/auth`, `/scenarios`, `/negotiations` y `/messages` y los amplía.
