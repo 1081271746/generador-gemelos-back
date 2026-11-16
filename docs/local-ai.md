@@ -2,7 +2,8 @@
 
 ## Qué se implementó y qué no
 
-La ruta predeterminada ahora es `AI_PROVIDER=local`. FastAPI conserva sus rutas,
+La ruta local opcional se activa con `AI_PROVIDER=local`; Groq es ahora el
+proveedor predeterminado (ver [migración](groq-migration.md)). FastAPI conserva sus rutas,
 schemas y persistencia; los dos servicios gRPC conservan el `.proto` y delegan
 en `TwinEngine` y `AnalysisEngine`, mediante una interfaz de inferencia Python.
 El motor llama a un servidor **llama.cpp propio** por HTTP con salida JSON Schema.
@@ -122,15 +123,16 @@ URL del usuario. La configuración rechaza credenciales incrustadas.
   credenciales ni respuestas. Los informes offline pueden contener muestras:
   son privados/ignorados por Git y no se publican automáticamente.
 
-`/health` mantiene `gemini_configured` por compatibilidad y añade `ai_provider`
-y `ai_readiness=not_probed`. No afirma que el modelo esté cargado ni que genere
+`/health` mantiene `gemini_configured=false` por compatibilidad y devuelve
+`groq_configured`, `ai_provider` y `ai_readiness=not_probed`. No afirma que el modelo esté cargado ni que genere
 correctamente: usa el probe y la evaluación explícita para comprobarlo.
 
 ## Compatibilidad y reversión
 
 No se cambiaron Protocol Buffers, endpoints, modelos SQLAlchemy ni migraciones.
-No hay fallback automático. `AI_PROVIDER=gemini` permite volver explícitamente
-al proveedor anterior si se configura; no es necesario para la ruta local.
+No hay fallback automático. `AI_PROVIDER=gemini` ya no está admitido:
+el cliente anterior fue sustituido por Groq. `AI_PROVIDER=local` conserva la
+ruta autohospedada, sin necesitar una clave de Groq.
 El despliegue existente no se actualiza automáticamente con un push.
 
 ## Pesos y datos

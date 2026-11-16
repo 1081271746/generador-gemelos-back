@@ -18,14 +18,14 @@ def free_port():
         return handle.getsockname()[1]
 
 
-async def test_four_processes_start_and_missing_gemini_is_controlled(tmp_path, redis_url):
+async def test_four_processes_start_and_missing_groq_is_controlled(tmp_path, redis_url):
     ports = [free_port() for _ in range(4)]
     root = Path(__file__).resolve().parents[1]
     env = {
         **os.environ,
         "DATABASE_URL": f"sqlite:///{tmp_path / 'processes.db'}",
         "SECRET_KEY": token_urlsafe(48), "SERVICE_SECRET": token_urlsafe(48),
-        "GEMINI_API_KEY": "", "REDIS_URL": redis_url,
+        "AI_PROVIDER": "groq", "GROQ_API_KEY": "", "REDIS_URL": redis_url,
         "TWIN_GRPC_TARGET": f"127.0.0.1:{ports[0]}",
         "ANALYSIS_GRPC_TARGET": f"127.0.0.1:{ports[1]}",
         "EVENT_GRPC_TARGET": f"127.0.0.1:{ports[2]}",
@@ -49,7 +49,10 @@ async def test_four_processes_start_and_missing_gemini_is_controlled(tmp_path, r
         async with httpx.AsyncClient(base_url=f"http://127.0.0.1:{ports[3]}", timeout=5) as client:
             for _ in range(100):
                 try:
-                    if (await client.get("/health")).status_code == 200:
+                    health = await client.get("/health")
+                    if health.status_code == 200:
+                        assert health.json()["ai_provider"] == "groq"
+                        assert health.json()["groq_configured"] is False
                         break
                 except httpx.HTTPError:
                     pass

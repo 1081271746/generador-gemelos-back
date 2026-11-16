@@ -11,5 +11,6 @@ grpcio==1.85.1
 grpcio-tools==1.85.1
 protobuf==7.36.2
 httpx==0.28.1
+groq==1.7.0
 pytest==9.2.0
 pytest-asyncio==1.4.1.post1

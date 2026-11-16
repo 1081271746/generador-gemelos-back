@@ -1,8 +1,10 @@
-# Motor de IA local (actualización)
+# Proveedor de IA Groq (actualización)
 
-La inferencia predeterminada usa un **modelo abierto autohospedado mediante
-llama.cpp**, no Gemini. Se mantienen los servicios gRPC y todos los contratos
-existentes. Gemini queda disponible solo como reversión explícita.
+La inferencia predeterminada usa **Groq con su SDK oficial asíncrono**.
+El modelo inicial configurable es `openai/gpt-oss-20b`. Se mantienen los
+servicios gRPC, la persistencia y los contratos existentes. Gemini fue retirado.
+El motor local anterior sigue disponible únicamente con `AI_PROVIDER=local`,
+sin fallback automático. [Guía de migración y ejecución](docs/groq-migration.md).
 
 - [Arquitectura, modelo, licencia e inferencia local](docs/local-ai.md).
 - [Dataset, entrenamiento LoRA/QLoRA, evaluación y exportación](docs/training.md).
@@ -11,25 +13,25 @@ existentes. Gemini queda disponible solo como reversión explícita.
 - [Diagnóstico medido del timeout y avances por etapa](docs/performance-diagnosis.md).
 - [Diagnóstico de la GPU local en Windows sin instalaciones](docs/windows-hardware-diagnostic.md).
 
-**Estado:** integración y pipeline implementados; inferencia del modelo base
+**Estado de la ruta local opcional:** integración y pipeline implementados; inferencia del modelo base
 probada en CPU; **sin adaptador especializado entrenado**. Los 20 ejemplos
 sintéticos son demostrativos, no un corpus suficiente para una IA experta.
-Las secciones históricas sobre Gemini que siguen describen el proveedor previo.
-Para la ruta nueva siguen vigentes FastAPI, Redis, gRPC, autenticación y
-persistencia; sustituye la configuración de proveedor como indica la guía local.
+Las guías de entrenamiento e inferencia local documentan la ruta opcional y
+sus mediciones históricas, no una validación de Groq contra una cuenta real.
 
 # Generador de Gemelos de Negociación — Backend
 
 Backend universitario desarrollado sobre los archivos originales de `1081271746/generador-gemelos-back`. No incluye frontend. La API conserva los prefijos `/auth`, `/scenarios`, `/negotiations` y `/messages` y los amplía.
 
-Se utiliza **Gemini**, no OpenAI. Las menciones a OpenAI y al repositorio `Copiloto-Duelo-Back` del documento original se consideran referencias desactualizadas frente a las instrucciones actuales.
+Se utiliza **Groq**, no la API de Gemini ni la API de OpenAI. El identificador
+`openai/gpt-oss-20b` corresponde a un modelo abierto alojado por Groq.
 
 ## Requisitos
 
 - Python 3.13, probado en este entorno.
 - Redis Server, probado con Redis 7.2.10.
 - Cuatro procesos Python: FastAPI, gemelo gRPC, análisis gRPC y eventos gRPC.
-- Una clave de Google Gemini para generar respuestas y análisis reales. El modelo y las cuotas dependen de la cuenta; no se garantiza acceso gratuito por ser estudiante.
+- Una clave de Groq para generar respuestas y análisis reales. El acceso al modelo y las cuotas dependen de la cuenta.
 
 ## Instalación local
 
@@ -45,7 +47,7 @@ python -m alembic upgrade head
 
 En Windows, activar el entorno con `.venv\Scripts\activate`. Instalar Redis en un entorno compatible, por ejemplo WSL.
 
-`configure_local.py` crea `.env` con dos secretos aleatorios independientes, sin mostrarlos y sin sobrescribir una configuración existente. `.env` está excluido de Git. Configurar `GEMINI_API_KEY` en el gestor de secretos o en el archivo local; nunca subirlo al repositorio. No pegar claves en chats ni capturas.
+`configure_local.py` es solo para instalaciones nuevas: crea `.env` sin sobrescribir uno existente. No ejecutarlo para migrar una instalación configurada. `.env` está excluido de Git. Para migrar, conservar todas las credenciales y añadir manualmente las variables `GROQ_*` de la guía; nunca pegar claves en chats ni capturas. No ejecutar migraciones de base de datos para este cambio de proveedor.
 
 Arrancar Redis en una terminal:
 
@@ -71,7 +73,7 @@ python -m app.rpc.event_server
 python -m uvicorn app.main:app --host 127.0.0.1 --port 8000
 ```
 
-API: `http://127.0.0.1:8000`. Swagger: `/docs`. Contrato OpenAPI: `/openapi.json`. `/health` comprueba la base de datos e indica si se configuró Gemini; **no certifica** disponibilidad de Google, Redis ni de los servicios gRPC.
+API: `http://127.0.0.1:8000`. Swagger: `/docs`. Contrato OpenAPI: `/openapi.json`. `/health` comprueba la base de datos e indica el proveedor y `groq_configured`; **no certifica** disponibilidad de Groq, Redis ni de los servicios gRPC. Conserva `gemini_configured=false` como campo obsoleto de compatibilidad.
 
 Los procesos leen `.env` al iniciarse; reiniciarlos tras cambiar configuración.
 
@@ -83,11 +85,12 @@ Los procesos leen `.env` al iniciarse; reiniciarlos tras cambiar configuración.
 | `SECRET_KEY` | Firma JWT de usuarios; al menos 32 caracteres |
 | `SERVICE_SECRET` | Firma JWT entre servicios; distinto del anterior |
 | `ACCESS_TOKEN_EXPIRE_MINUTES` | Duración de tokens; por defecto 30 minutos |
-| `GEMINI_API_KEY` | Credencial de Google, nunca incluida en Git |
-| `GEMINI_MODEL` | Modelo configurable; valor inicial `gemini-2.5-flash` |
-| `GEMINI_TIMEOUT_SECONDS` | Tiempo máximo HTTP; por defecto 30 segundos |
-| `GEMINI_REQUESTS_PER_MINUTE` | Límite preventivo compartido en Redis; por defecto 10 |
-| `REDIS_URL` | Redis de eventos y control de uso de Gemini |
+| `GROQ_API_KEY` | Credencial de Groq, nunca incluida en Git |
+| `GROQ_MODEL` | Modelo configurable; valor inicial `openai/gpt-oss-20b` |
+| `GROQ_TIMEOUT_SECONDS` | Tiempo máximo de cuota y petición; por defecto 30 segundos |
+| `GROQ_REQUESTS_PER_MINUTE` | Límite preventivo compartido en Redis; por defecto 10 |
+| `AI_PROVIDER` | `groq` por defecto; `local` solo por selección explícita |
+| `REDIS_URL` | Redis de eventos y control de uso de IA; sin cambios de credenciales |
 | `TWIN_GRPC_TARGET` | Servicio del gemelo, por defecto `127.0.0.1:50051` |
 | `ANALYSIS_GRPC_TARGET` | Servicio de análisis, por defecto `127.0.0.1:50052` |
 | `EVENT_GRPC_TARGET` | Servicio central de eventos, por defecto `127.0.0.1:50053` |
@@ -107,7 +110,7 @@ Definir `SEED_PASSWORD` mediante un mecanismo local seguro, con un mínimo de 12
 python -m seed.load
 ```
 
-Se crea `demo@example.com`, dos escenarios y una negociación de ejemplo. Es repetible y no modifica un usuario existente. No incluye resultados de IA inventados. Se puede analizar el historial ficticio con Gemini una vez configurado. Los ejercicios curados están disponibles en `/resources/exercises`, claramente separados de las recomendaciones de IA.
+Se crea `demo@example.com`, dos escenarios y una negociación de ejemplo. Es repetible y no modifica un usuario existente. No incluye resultados de IA inventados. Se puede analizar el historial ficticio con Groq una vez configurado. Los ejercicios curados están disponibles en `/resources/exercises`, claramente separados de las recomendaciones de IA. No ejecutar el seed como parte de la migración de proveedor.
 
 El código original utilizaba bcrypt. No es posible convertir un hash bcrypt a Argon2 sin conocer la contraseña. Esta implementación no conserva bcrypt como mecanismo de autenticación. Para cuentas locales anteriores, después de migrar la base:
 
@@ -134,8 +137,8 @@ Cliente HTTP / futuro Angular
           |                       |
     dispatcher de outbox ------ Redis Pub/Sub
 
-FastAPI -- gRPC autenticado --> servicio del gemelo -- HTTPS --> Gemini
-FastAPI -- gRPC autenticado --> servicio de análisis -- HTTPS --> Gemini
+FastAPI -- gRPC autenticado --> servicio del gemelo -- AsyncGroq / HTTPS --> Groq
+FastAPI -- gRPC autenticado --> servicio de análisis -- AsyncGroq / HTTPS --> Groq
 ```
 
 - **Repository Pattern**: autorización y consultas de escenarios, negociaciones, mensajes y eventos.
@@ -144,7 +147,7 @@ FastAPI -- gRPC autenticado --> servicio de análisis -- HTTPS --> Gemini
 - **Factory**: `create_app`, `make_engine` y construcción de canales.
 - **Publish/Subscribe y Fan-Out**: un servicio central con Redis distribuye avisos a varios suscriptores.
 - **Outbox transaccional**: los eventos se guardan con la operación de negocio y se publican con reintentos.
-- No se añadió Strategy Pattern artificialmente: existe un proveedor Gemini concreto y esquemas de resultados separados.
+- La fábrica de proveedores selecciona Groq por defecto o el motor local por configuración explícita; los motores de gemelo y análisis conservan sus esquemas y validaciones.
 
 Los servicios de IA no acceden a la base de datos ni ejecutan instrucciones arbitrarias. Solo reciben contexto y devuelven JSON validado. El servicio de eventos tiene acceso limitado mediante su repositorio a la autenticación, propiedad e historial de eventos. La API es responsable de persistir los datos de negocio.
 
@@ -157,7 +160,7 @@ app/models/         modelos originales ampliados y relaciones ORM
 app/schemas/        contratos de entrada, salida y análisis
 app/repositories/   acceso y aislamiento de datos
 app/services/       lógica de negocio y outbox
-app/ai/             cliente Gemini, cuotas y prompts
+app/ai/             cliente Groq, proveedor local opcional, cuotas y prompts
 app/rpc/            contratos Protobuf, clientes y servidores
 app/routers/        API HTTP
 app/websocket/      puente WebSocket a gRPC Streaming
@@ -175,12 +178,12 @@ tests/             pruebas unitarias y de integración real
 - Estados: `active`, `completed`, `cancelled`. Cerrar exige un resultado explícito y no se permite mientras hay un turno en proceso.
 - Mensajes sin endpoints de edición ni borrado; ofertas, contraofertas, argumentos y concesiones.
 - `request_id` UUID hace idempotente un turno. Para reintentar tras un 503, reutilizar **el mismo UUID y contenido**. Si se omite, el servidor lo genera; para reintentos fiables debe enviarlo el cliente.
-- El mensaje del usuario queda persistido aunque falle la IA. No se genera una respuesta de sustitución presentada como Gemini.
+- El mensaje del usuario queda persistido aunque falle la IA. No se genera una respuesta de sustitución presentada como Groq.
 - Bloqueo temporal por negociación impide turnos simultáneos y permite recuperar operaciones interrumpidas. Un reintento antiguo incompleto no se acepta después de mensajes posteriores.
 - Análisis de negociaciones cerradas, una versión persistida por negociación. Las cinco dimensiones tienen puntajes de 0 a 100, explicación y citas exactas de mensajes del usuario.
 - Evidencia inventada, estructuras inválidas o respuestas bloqueadas no se almacenan como análisis válidos.
 - Perfil progresivo: medias de indicadores contextuales, estrategias, fortalezas, oportunidades, recomendaciones, ejercicios e historial de evolución. Nunca diagnóstico ni etiqueta definitiva de personalidad.
-- El contexto completo viaja a Gemini, incluyendo perfil e historial. Si supera el límite preventivo de 200.000 caracteres se devuelve un error controlado en lugar de truncarlo silenciosamente.
+- El contexto completo viaja a Groq, incluyendo perfil e historial. Si supera el límite preventivo de 200.000 bytes UTF-8 se devuelve un error controlado en lugar de truncarlo silenciosamente. Revisar la autorización para enviar estos datos a un proveedor externo.
 
 ## Endpoints
 
@@ -274,20 +277,25 @@ python -m pytest -q
 git diff --check
 ```
 
-Las pruebas arrancan Redis temporal en puertos locales y bases SQLite aisladas. No usan claves reales ni consumen cuota de Gemini. Incluyen:
+Las pruebas arrancan Redis temporal en puertos locales y bases SQLite aisladas. No usan claves reales ni consumen cuota de Groq. Incluyen:
 
 - Registro, login, JWT, revocación, contraseñas y protección de endpoints.
 - Escenarios, estados, propiedad e historial inmutable.
 - Idempotencia, concurrencia por negociación y conservación de mensajes ante fallos.
 - Validación de análisis, citas exactas, perfiles, ejercicios y recomendaciones.
-- Gemini con HTTP controlado: respuestas válidas, inválidas, cuotas, errores y timeout.
+- SDK oficial Groq con HTTP controlado: respuestas válidas, inválidas, cuotas, errores y timeout.
 - Canales gRPC reales para gemelo, análisis y eventos; solo el proveedor de IA está sustituido.
 - Redis real, Fan-Out, aislamiento, duplicados, reconexión y reinicio del servicio de eventos.
 - Dos aplicaciones FastAPI reales compartiendo el servicio central gRPC/Redis, con eventos recibidos por WebSocket.
 - Cuotas compartidas entre clientes independientes.
 - Migraciones, conservación de registros anteriores y herramientas de configuración.
 
-No se afirma que Gemini haya sido probado contra una cuenta real. El uso real requiere clave, acceso al modelo y cuota. PostgreSQL y TLS remoto no se han certificado mediante despliegues reales.
+Groq se verificó con el SDK oficial y HTTP simulado, no con una cuenta real.
+El uso real requiere clave, acceso al modelo y cuota. En esta migración pasaron
+167 pruebas; se excluyó `test_migrations.py` para no ejecutar pruebas de
+downgrade. Las bases y Redis de pruebas fueron temporales; no se alteró la base
+real. Se observó un aviso de deprecación de Starlette/httpx, sin fallos.
+PostgreSQL y TLS remoto no se han certificado mediante despliegues reales.
 
 ## Migraciones y futura base PostgreSQL
 
@@ -311,12 +319,12 @@ Todas las instancias locales de FastAPI y el servicio de eventos deben apuntar a
 ## Seguridad y límites conocidos
 
 - Contraseñas nuevas con Argon2id; JWT de usuario y de servicio con claves distintas.
-- No se almacenan claves de Gemini, tokens ni contraseñas en tablas o eventos.
+- No se almacenan claves de Groq, tokens ni contraseñas en tablas o eventos.
 - El historial es inmutable por API; un administrador con acceso directo a la base puede modificarlo. No se promete un registro criptográficamente inalterable.
 - La IA no garantiza veracidad de las conclusiones: se validan estructura, rangos y citas, y se mantienen indicadores contextuales.
 - Mantener Redis en red privada. Para producción añadir políticas de respaldo, rotación de claves, límites por IP y usuario en el acceso público, observabilidad sin información sensible y pruebas de carga.
 - Una instancia central de eventos es la topología verificada. No se presenta gRPC como replicación de datos ni se promete entrega exactamente una vez.
-- Gemini puede rechazar un modelo, agotar cuota o no estar disponible; las operaciones de cuenta, escenarios, historial y recursos continúan funcionando.
+- Groq puede rechazar un modelo, agotar cuota o no estar disponible; las operaciones de cuenta, escenarios, historial y recursos continúan funcionando.
 - Este proyecto no implementa frontend, despliegue productivo, recuperación de contraseña por correo ni migración automática de datos a PostgreSQL.
 
 ## Git y entrega

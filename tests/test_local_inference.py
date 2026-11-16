@@ -115,8 +115,8 @@ def test_endpoint_validation(url):
         InferenceConfig(base_url=url)
 
 
-async def test_local_is_default_and_unknown_provider_fails(monkeypatch):
-    monkeypatch.delenv("AI_PROVIDER", raising=False)
+async def test_local_remains_explicit_and_unknown_provider_fails(monkeypatch):
+    monkeypatch.setenv("AI_PROVIDER", "local")
     service = create_provider()
     assert isinstance(service, LocalInference)
     await service.close()

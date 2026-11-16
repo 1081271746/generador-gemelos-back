@@ -4,7 +4,7 @@ from app.core.security import verify_password
 
 
 def test_local_configuration_never_overwrites_existing_file(tmp_path):
-    (tmp_path / ".env.example").write_text("SECRET_KEY=\nSERVICE_SECRET=\nGEMINI_API_KEY=\n")
+    (tmp_path / ".env.example").write_text("SECRET_KEY=\nSERVICE_SECRET=\nGROQ_API_KEY=\n")
     assert configure(tmp_path)
     content = (tmp_path / ".env").read_text()
     values = dict(line.split("=", 1) for line in content.splitlines())

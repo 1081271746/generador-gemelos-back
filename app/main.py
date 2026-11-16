@@ -73,7 +73,8 @@ def create_app(session_factory=SessionLocal, client_factory=ServiceClients, star
         except Exception:
             return JSONResponse({"database": "unavailable"}, status_code=503)
         from app.ai.model_manager import provider_name
-        return {"database": "ok", "gemini_configured": bool(settings.GEMINI_API_KEY),
+        return {"database": "ok", "gemini_configured": False,
+                "groq_configured": bool(settings.GROQ_API_KEY.strip()),
                 "ai_provider": provider_name(),
                 "ai_readiness": "not_probed"}
 

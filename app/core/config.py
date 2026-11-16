@@ -13,10 +13,10 @@ class Settings:
     SECRET_KEY: str = field(default_factory=lambda: os.getenv("SECRET_KEY", ""))
     SERVICE_SECRET: str = field(default_factory=lambda: os.getenv("SERVICE_SECRET", ""))
     ACCESS_TOKEN_EXPIRE_MINUTES: int = field(default_factory=lambda: int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "30")))
-    GEMINI_API_KEY: str = field(default_factory=lambda: os.getenv("GEMINI_API_KEY", ""))
-    GEMINI_MODEL: str = field(default_factory=lambda: os.getenv("GEMINI_MODEL", "gemini-2.5-flash"))
-    GEMINI_TIMEOUT_SECONDS: float = field(default_factory=lambda: float(os.getenv("GEMINI_TIMEOUT_SECONDS", "30")))
-    GEMINI_REQUESTS_PER_MINUTE: int = field(default_factory=lambda: int(os.getenv("GEMINI_REQUESTS_PER_MINUTE", "10")))
+    GROQ_API_KEY: str = field(default_factory=lambda: os.getenv("GROQ_API_KEY", ""), repr=False)
+    GROQ_MODEL: str = field(default_factory=lambda: os.getenv("GROQ_MODEL", "openai/gpt-oss-20b"))
+    GROQ_TIMEOUT_SECONDS: float = field(default_factory=lambda: float(os.getenv("GROQ_TIMEOUT_SECONDS", "30")))
+    GROQ_REQUESTS_PER_MINUTE: int = field(default_factory=lambda: int(os.getenv("GROQ_REQUESTS_PER_MINUTE", "10")))
     REDIS_URL: str = field(default_factory=lambda: os.getenv("REDIS_URL", "redis://127.0.0.1:6379/0"))
     TWIN_GRPC_TARGET: str = field(default_factory=lambda: os.getenv("TWIN_GRPC_TARGET", "127.0.0.1:50051"))
     ANALYSIS_GRPC_TARGET: str = field(default_factory=lambda: os.getenv("ANALYSIS_GRPC_TARGET", "127.0.0.1:50052"))
@@ -32,8 +32,12 @@ class Settings:
             raise RuntimeError("SECRET_KEY and SERVICE_SECRET must each contain at least 32 characters")
         if self.SECRET_KEY == self.SERVICE_SECRET:
             raise RuntimeError("Access and service signing keys must be different")
-        if self.GEMINI_REQUESTS_PER_MINUTE < 1 or self.GRPC_TIMEOUT_SECONDS <= 0:
+        if (self.GROQ_REQUESTS_PER_MINUTE < 1 or
+                not 0 < self.GROQ_TIMEOUT_SECONDS < float("inf") or
+                self.GRPC_TIMEOUT_SECONDS <= 0):
             raise RuntimeError("Rate and timeout settings must be positive")
+        if not self.GROQ_MODEL.strip():
+            raise RuntimeError("GROQ_MODEL must not be empty")
 
 
 settings = Settings()
