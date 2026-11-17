@@ -14,3 +14,4 @@ httpx==0.28.1
 groq==1.7.0
 pytest==9.2.0
 pytest-asyncio==1.4.1.post1
+psycopg[binary]==3.3.6
