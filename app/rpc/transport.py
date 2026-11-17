@@ -1,6 +1,7 @@
 import ipaddress
 from pathlib import Path
-
+import asyncio
+import signal
 import grpc
 import jwt
 
@@ -52,3 +53,16 @@ async def require_service(context, scope: str) -> int:
         return decode_service_token(bearer(context), scope)
     except (jwt.InvalidTokenError, ValueError, TypeError):
         await context.abort(grpc.StatusCode.UNAUTHENTICATED, "Invalid service credentials")
+
+def install_shutdown_handlers(stopping: asyncio.Event) -> None:
+    loop = asyncio.get_running_loop()
+
+    def request_shutdown(_signum, _frame):
+        loop.call_soon_threadsafe(stopping.set)
+
+    for sig in (signal.SIGINT, signal.SIGTERM):
+        try:
+            loop.add_signal_handler(sig, stopping.set)
+        except NotImplementedError:
+            # Windows: use the standard signal handler.
+            signal.signal(sig, request_shutdown)

@@ -1,7 +1,7 @@
 import argparse
 import asyncio
 import json
-import signal
+
 
 import grpc
 from pydantic import ValidationError
@@ -14,7 +14,11 @@ from app.ai.prompts import TWIN_INSTRUCTIONS, ANALYSIS_INSTRUCTIONS
 from app.core.config import settings
 from app.core.errors import ExternalServiceError
 from app.rpc import negotiation_pb2 as pb, negotiation_pb2_grpc as rpc
-from app.rpc.transport import bind_server, require_service
+from app.rpc.transport import (
+    bind_server,
+    require_service,
+    install_shutdown_handlers,
+)
 from app.schemas.analysis import TwinResponse, AnalysisResult
 
 
@@ -70,8 +74,7 @@ async def serve(kind: str):
         rpc.add_NegotiationAnalysisServiceServicer_to_server(servicer, server)
     bind_server(server, target)
     stopping = asyncio.Event()
-    for sig in (signal.SIGINT, signal.SIGTERM):
-        asyncio.get_running_loop().add_signal_handler(sig, stopping.set)
+    install_shutdown_handlers(stopping)
     await server.start()
     try:
         await stopping.wait()
