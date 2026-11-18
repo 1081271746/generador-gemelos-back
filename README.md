@@ -5,7 +5,10 @@ CONTRASEÑA: 1234567891112
 
 
 
-Generador de Gemelos de Negociación 🤝
+Generador de Gemelos de Negociación 
+
+
+
 Plataforma web para practicar negociaciones con un gemelo de inteligencia artificial y analizar el desempeño con evidencias
 El Generador de Gemelos de Negociación es una plataforma web que permite crear escenarios de negociación, practicar conversaciones con un gemelo de IA, consultar el historial de cada negociación y obtener análisis estructurados sobre las estrategias utilizadas.
 
