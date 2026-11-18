@@ -5,7 +5,7 @@ CONTRASEÑA: 1234567891112
 
 
 
-# Generador de Gemelos de Negociación 🤝
+# Generador de Gemelos de Negociación 
 
 ### Plataforma web para practicar negociaciones con un gemelo de inteligencia artificial y analizar el desempeño con evidencias
 
